@@ -28,6 +28,13 @@ void SystemClock_Config(void);
 
 void process_serial_data(uint8_t ch);
 
+static uint8_t count = 0;
+
+static char off[] = "ledOFF";
+static char on[] = "ledON";
+static char command[7];
+
+
 int main(void)
 {
 
@@ -43,15 +50,38 @@ int main(void)
 
   USART2_RegisterCallback(process_serial_data);
 
-  char tx_data = 'a';
+
+
+  int i = 0;
+  char tx_data[7];
 
   while (1)
   {
-	  LL_USART_TransmitData8(USART2, tx_data++);
-	  tx_data == ('z' + 1) ? tx_data = 'a' : tx_data;
 
-	  LL_mDelay(50);
+	  if((LL_GPIO_ReadInputPort(GPIOB) & (1 << 3)) >> 3)
+	  {
+		  strcpy(tx_data,"ledON\n");
+	  }
+	  else
+	  {
+		  strcpy(tx_data,"ledOFF\n");
+	  }
+
+	  if (tx_data[i]!='\0')
+	  {
+		  LL_USART_TransmitData8(USART2, tx_data[i]);
+		  i++;
+	  }
+	  else
+	  {
+		  i=0;
+		  LL_mDelay(5000);
+	  }
+
+
+	  LL_mDelay(5);
   }
+
 }
 
 /**
@@ -92,27 +122,31 @@ void SystemClock_Config(void)
 
 void process_serial_data(uint8_t ch)
 {
-	static uint8_t count = 0;
 
-	if(ch == 'a')
-	{
-		count++;
 
-		if(count >= 3)
+
+		if (ch != '\n')
 		{
-			if((LL_GPIO_ReadInputPort(GPIOB) & (1 << 3)) >> 3)
+		command[count]=(char*)ch;
+		count++;
+		}
+
+		else
+		{
+			if (strcmp(off, command) == 0)
 			{
 				LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_3);
+
 			}
-			else
+			else if (strcmp(on, command) == 0)
 			{
 				LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_3);
 			}
-
 			count = 0;
-			return;
 		}
-	}
+
+
+
 }
 
 
